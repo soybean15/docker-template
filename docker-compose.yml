@@ -1,0 +1,76 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sprinthrv2
+    container_name: sprinthrv2
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+      - /var/www/vendor
+      - ./docker-compose/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  webserver:
+    image: nginx:alpine
+    container_name: nginx-webserver
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  db:
+    image: mysql:5.7
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE:  ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD:  ${DB_PASSWORD}
+      PHP_UPLOAD_MAX_FILESIZE: 400M
+      PHP_POST_MAX_SIZE: 400M
+      PHP_MEMORY_LIMIT: 512M
+
+      # MYSQL_USER: ${MYSQL_USER}
+      # MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    networks:
+      - app-network
+
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"  # Access phpMyAdmin at http://localhost:8081
+    environment:
+      PMA_HOST: db  # This should match your database service name
+    #   PMA_USER: root  # MySQL user
+    #   PMA_PASSWORD: root  # MySQL user's password
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 600M
+    networks:
+      - app-network
+
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  dbdata:
+    driver: local
