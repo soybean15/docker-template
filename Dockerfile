@@ -6,7 +6,12 @@ RUN cd /tmp \
     && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
     && rm composer-setup.php
 
+<<<<<<< HEAD
 # Install all required PHP extensions and useful tools in a single RUN statement
+=======
+
+
+>>>>>>> Payment12k
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -36,11 +41,15 @@ RUN apt-get update && apt-get install -y \
     supervisor \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
-    && docker-php-ext-install pdo pdo_mysql gd pdo_pgsql pgsql exif mbstring pcntl bcmath zip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql pgsql exif gd
 
-# Set up Supervisor configuration
-COPY ./docker/supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+    # Install PHP extensions
+RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+
+    RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g npm@latest
 
 # Set the working directory
 WORKDIR /var/www
@@ -49,14 +58,30 @@ COPY . .
 # Run composer install
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
+# Run composer install
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Run Permissions
+RUN mkdir -p /var/www/bootstrap/cache /var/www/storage \
+    && chown -R www-data:www-data /var/www/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache /var/www/storage
+
+
+COPY ./docker-compose/supervisor/supervisor.conf /etc/supervisor/conf.d/supervisor.conf
+
+
+RUN npm install
+
+
 # Ensure the bootstrap/cache and storage directories exist and are writable
 RUN mkdir -p /var/www/bootstrap/cache /var/www/storage \
     && chown -R www-data:www-data /var/www/bootstrap/cache \
     && chown -R www-data:www-data /var/www/storage \
     && chmod -R 775 /var/www/bootstrap/cache /var/www/storage
 
+
+
 # Expose the port
 EXPOSE 9000
-
-# Define entry point to run Supervisor and PHP-FPM
-CMD ["/usr/bin/supervisord", "-n"]
+CMD ["php-fpm"]
